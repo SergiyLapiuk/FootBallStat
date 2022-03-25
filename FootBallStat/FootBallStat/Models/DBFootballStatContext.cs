@@ -17,7 +17,6 @@ namespace FootBallStat
         }
 
         public virtual DbSet<Championship> Championships { get; set; } = null!;
-        public virtual DbSet<City> Cities { get; set; } = null!;
         public virtual DbSet<Country> Countries { get; set; } = null!;
         public virtual DbSet<Match> Matches { get; set; } = null!;
         public virtual DbSet<Player> Players { get; set; } = null!;
@@ -45,17 +44,6 @@ namespace FootBallStat
                     .HasForeignKey(d => d.CountryId)
                     .OnDelete(DeleteBehavior.ClientSetNull)
                     .HasConstraintName("FK_Championship_Country");
-            });
-
-            modelBuilder.Entity<City>(entity =>
-            {
-                entity.Property(e => e.Name).HasMaxLength(50);
-
-                entity.HasOne(d => d.Country)
-                    .WithMany(p => p.Cities)
-                    .HasForeignKey(d => d.CountryId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
-                    .HasConstraintName("FK_City_Country");
             });
 
             modelBuilder.Entity<Country>(entity =>
@@ -128,12 +116,6 @@ namespace FootBallStat
             modelBuilder.Entity<Team>(entity =>
             {
                 entity.Property(e => e.Name).HasMaxLength(50);
-
-                entity.HasOne(d => d.City)
-                    .WithMany(p => p.Teams)
-                    .HasForeignKey(d => d.CityId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
-                    .HasConstraintName("FK_Team_City");
             });
 
             OnModelCreatingPartial(modelBuilder);

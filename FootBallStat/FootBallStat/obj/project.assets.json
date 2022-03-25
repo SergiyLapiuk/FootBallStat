@@ -2603,11 +2603,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\acer\\Desktop\\laba1\\FootBallStat\\FootBallStat\\FootBallStat.csproj",
+      "projectUniqueName": "C:\\Users\\acer\\Desktop\\laba12\\FootBallStat\\FootBallStat\\FootBallStat.csproj",
       "projectName": "FootBallStat",
-      "projectPath": "C:\\Users\\acer\\Desktop\\laba1\\FootBallStat\\FootBallStat\\FootBallStat.csproj",
+      "projectPath": "C:\\Users\\acer\\Desktop\\laba12\\FootBallStat\\FootBallStat\\FootBallStat.csproj",
       "packagesPath": "C:\\Users\\acer\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\acer\\Desktop\\laba1\\FootBallStat\\FootBallStat\\obj\\",
+      "outputPath": "C:\\Users\\acer\\Desktop\\laba12\\FootBallStat\\FootBallStat\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\acer\\AppData\\Roaming\\NuGet\\NuGet.Config",
