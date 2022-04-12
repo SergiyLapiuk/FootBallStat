@@ -1,0 +1,20 @@
+﻿@model FootBallStat.Championship
+
+@{
+    ViewData["Title"] = "Details";
+}
+
+<h1>Команди чемпіонату @ViewBag.Championship.Name</h1>
+
+<div>
+    @foreach(var item in @ViewBag.Teams)
+    {
+        <form asp-controller="Teams" asp-action="Details" asp-route-id="@item.Id">
+            <button all:unset class="btn btn-success"   style="width: 90%; padding: 10px; margin: 10px">@item.Name</button>
+        </form>
+    }
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
+    <a asp-action="Index">Back to List</a>
+</div>
