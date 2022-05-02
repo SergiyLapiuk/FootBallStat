@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using FootBallStat;
+using System.ComponentModel.DataAnnotations;
 
 namespace FootBallStat.Controllers
 {
@@ -59,13 +60,29 @@ namespace FootBallStat.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Name")] Country country)
         {
-            if (ModelState.IsValid)
+            if (IsUnique(country.Name)) 
             {
-                _context.Add(country);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                if (ModelState.IsValid)
+                {
+                    _context.Add(country);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                } 
+            }
+            else
+            {
+                ViewData["ErrorMessage"] = "Така країна вже додана!";
             }
             return View(country);
+        }
+
+        bool IsUnique(string name)
+        {
+            var q = (from country in _context.Countries
+                     where country.Name == name
+                     select country).ToList();
+            if (q.Count == 0) { return true; }
+            return false;
         }
 
         // GET: Countries/Edit/5
@@ -96,25 +113,32 @@ namespace FootBallStat.Controllers
                 return NotFound();
             }
 
-            if (ModelState.IsValid)
+            if (IsUnique(country.Name)) 
             {
-                try
+                if (ModelState.IsValid)
                 {
-                    _context.Update(country);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!CountryExists(country.Id))
+                    try
                     {
-                        return NotFound();
+                        _context.Update(country);
+                        await _context.SaveChangesAsync();
                     }
-                    else
+                    catch (DbUpdateConcurrencyException)
                     {
-                        throw;
+                        if (!CountryExists(country.Id))
+                        {
+                            return NotFound();
+                        }
+                        else
+                        {
+                            throw;
+                        }
                     }
+                    return RedirectToAction(nameof(Index));
                 }
-                return RedirectToAction(nameof(Index));
+            }
+            else
+            {
+                ViewData["ErrorMessage"] = "Така країна вже додана!";
             }
             return View(country);
         }
@@ -143,9 +167,19 @@ namespace FootBallStat.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var country = await _context.Countries.FindAsync(id);
-            _context.Countries.Remove(country);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+
+            var count_champ = _context.Championships.Where(b => b.CountryId == id).Count();
+            if (count_champ != 0)
+            {
+                ViewData["ErrorMessage"] = "Видалення не можливе!";
+                return View(country);
+            }
+            else
+            {
+                _context.Countries.Remove(country);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         private bool CountryExists(int id)

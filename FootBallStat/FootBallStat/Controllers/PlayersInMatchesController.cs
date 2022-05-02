@@ -77,22 +77,38 @@ namespace FootBallStat.Controllers
         public async Task<IActionResult> Create(int matchId, [Bind("Id,PlayerId,MatchId,PlayerGoals")] PlayersInMatch playersInMatch)
         {
             playersInMatch.MatchId = matchId;
-            if (ModelState.IsValid)
+
+            if (IsUnique(playersInMatch.MatchId, playersInMatch.PlayerId))
             {
-                _context.Add(playersInMatch);
-                await _context.SaveChangesAsync();
-                //return RedirectToAction(nameof(Index));
-                return RedirectToAction("Index", "PlayersInMatches", new { 
-                    id = matchId, 
-                    team1Id = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().Team1Id,
-                    team2Id = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().Team2Id,
-                    championsipId = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().ChampionshipId,
-                    date = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().Date
-                });
+                if (ModelState.IsValid)
+                {
+                    _context.Add(playersInMatch);
+                    await _context.SaveChangesAsync();
+                    //return RedirectToAction(nameof(Index));
+                    return RedirectToAction("Index", "PlayersInMatches", new
+                    {
+                        id = matchId,
+                        team1Id = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().Team1Id,
+                        team2Id = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().Team2Id,
+                        championsipId = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().ChampionshipId,
+                        date = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().Date
+                    });
+                } 
+            }
+            else
+            {
+                ViewData["ErrorMessage"] = "Цей гравець вже бере участь в цьому матчі!";
+                int team1Id = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().Team1Id;
+                int team2Id = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().Team2Id;
+                ViewData["PlayerId"] = new SelectList(_context.Players.Where(c => c.TeamId == team1Id || c.TeamId == team2Id), "Id", "Name");
+                ViewBag.MatchId = matchId;
+                return View(playersInMatch);
+
             }
             //ViewData["MatchId"] = new SelectList(_context.Matches, "Id", "Id", playersInMatch.MatchId);
             //ViewData["PlayerId"] = new SelectList(_context.Players, "Id", "Id", playersInMatch.PlayerId);
             //return View(playersInMatch);
+
             return RedirectToAction("Index", "PlayersInMatches", new
             {
                 id = matchId,
@@ -101,6 +117,15 @@ namespace FootBallStat.Controllers
                 championsipId = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().ChampionshipId,
                 date = _context.Matches.Where(c => c.Id == matchId).FirstOrDefault().Date
             });
+        }
+
+        bool IsUnique(int matchId, int playerId)
+        {
+            var q = (from playerInMatch in _context.PlayersInMatches
+                     where playerInMatch.MatchId == matchId && playerInMatch.PlayerId == playerId
+                     select playerInMatch).ToList();
+            if (q.Count == 0) { return true; }
+            return false;
         }
 
         // GET: PlayersInMatches/Edit/5
@@ -118,7 +143,9 @@ namespace FootBallStat.Controllers
                 return NotFound();
             }
             ViewData["MatchId"] = new SelectList(_context.Matches, "Id", "Id", playersInMatch.MatchId);
-            ViewData["PlayerId"] = new SelectList(_context.Players, "Id", "Name", playersInMatch.PlayerId);
+            int team1Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team1Id;
+            int team2Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team2Id;
+            ViewData["PlayerId"] = new SelectList(_context.Players.Where(c => c.TeamId == team1Id || c.TeamId == team2Id), "Id", "Name");
             return View(playersInMatch);
         }
 
@@ -129,50 +156,74 @@ namespace FootBallStat.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,PlayerId,MatchId,PlayerGoals")] PlayersInMatch playersInMatch)
         {
+            var p = _context.PlayersInMatches.Where(b => b.Id == id).Include(b => b.Match).Include(x => x.Player).Include(b => b.Match.Team1).Include(b => b.Match.Team2).Include(b => b.Player.Team).FirstOrDefault();
+            bool flag = false;
+            if (p.PlayerId == playersInMatch.PlayerId)
+                flag = true;
+
+            p.PlayerId = playersInMatch.PlayerId;
+            p.PlayerGoals = playersInMatch.PlayerGoals;
+
+            playersInMatch = p;
+
             if (id != playersInMatch.Id)
             {
                 return NotFound();
             }
 
-            if (ModelState.IsValid)
-            {
-                try
+            if (IsUnique(playersInMatch.MatchId, playersInMatch.PlayerId) || flag) 
+            { 
+                if (ModelState.IsValid)
                 {
-                    _context.Update(playersInMatch);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!PlayersInMatchExists(playersInMatch.Id))
+                    try
                     {
-                        return NotFound();
+                        _context.Update(playersInMatch);
+                        await _context.SaveChangesAsync();
                     }
-                    else
+                    catch (DbUpdateConcurrencyException)
                     {
-                        throw;
+                        if (!PlayersInMatchExists(playersInMatch.Id))
+                        {
+                            return NotFound();
+                        }
+                        else
+                        {
+                            throw;
+                        }
                     }
-                }
-                //return RedirectToAction(nameof(Index));
-                return RedirectToAction("Index", "PlayersInMatches", new
-                {
-                    id = playersInMatch.MatchId,
-                    team1Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team1Id,
-                    team2Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team2Id,
-                    championsipId = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().ChampionshipId,
-                    date = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Date
-                });
+                    //return RedirectToAction(nameof(Index));
+                    return RedirectToAction("Index", "PlayersInMatches", new
+                    {
+                        id = playersInMatch.MatchId,
+                        team1Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team1Id,
+                        team2Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team2Id,
+                        championsipId = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().ChampionshipId,
+                        date = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Date
+                    });
+                } 
             }
-            ViewData["MatchId"] = new SelectList(_context.Matches, "Id", "Id", playersInMatch.MatchId);
-            ViewData["PlayerId"] = new SelectList(_context.Players, "Id", "Name", playersInMatch.PlayerId);
-            //return View(playersInMatch);
-            return RedirectToAction("Index", "PlayersInMatches", new
+            else
             {
-                id = playersInMatch.MatchId,
-                team1Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team1Id,
-                team2Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team2Id,
-                championsipId = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().ChampionshipId,
-                date = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Date
-            });
+                ViewData["ErrorMessage"] = "Цей гравець вже бере участь в цьому матчі!";
+                int team1Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team1Id;
+                int team2Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team2Id;
+                ViewData["PlayerId"] = new SelectList(_context.Players.Where(c => c.TeamId == team1Id || c.TeamId == team2Id), "Id", "Name");
+                ViewData["MatchId"] = new SelectList(_context.Matches, "Id", "Id", playersInMatch.MatchId);
+                //ViewBag.MatchId = matchId;
+
+            }
+            return View(playersInMatch);
+            //ViewData["MatchId"] = new SelectList(_context.Matches, "Id", "Id", playersInMatch.MatchId);
+            //ViewData["PlayerId"] = new SelectList(_context.Players, "Id", "Name", playersInMatch.PlayerId);
+            //return View(playersInMatch);
+            //return RedirectToAction("Index", "PlayersInMatches", new
+            //{
+            //    id = playersInMatch.MatchId,
+            //    team1Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team1Id,
+            //    team2Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team2Id,
+            //    championsipId = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().ChampionshipId,
+            //    date = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Date
+            //});
         }
 
         // GET: PlayersInMatches/Delete/5
@@ -203,7 +254,15 @@ namespace FootBallStat.Controllers
             var playersInMatch = await _context.PlayersInMatches.FindAsync(id);
             _context.PlayersInMatches.Remove(playersInMatch);
             await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            //return RedirectToAction(nameof(Index));
+            return RedirectToAction("Index", "PlayersInMatches", new
+            {
+                id = playersInMatch.MatchId,
+                team1Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team1Id,
+                team2Id = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Team2Id,
+                championsipId = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().ChampionshipId,
+                date = _context.Matches.Where(c => c.Id == playersInMatch.MatchId).FirstOrDefault().Date
+            });
         }
 
         private bool PlayersInMatchExists(int id)

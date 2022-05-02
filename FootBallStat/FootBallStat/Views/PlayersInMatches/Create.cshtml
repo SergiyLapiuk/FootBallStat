@@ -33,8 +33,26 @@
 </div>
 
 <div>
+         <p class="text-danger">@ViewData["ErrorMessage"]</p>
+</div> 
+
+@*<div>
     <a asp-action="Index">Back to List</a>
-</div>
+</div>*@
+
+<p>
+     @Html.ActionLink("Back to List", "Index", new { id = @ViewBag.MatchId, team1Id = @ViewBag.MatchTeam1Id, team2Id = @ViewBag.MatchTeam2Id, championshipId = @ViewBag.MatchChampionshipId,
+     date = @ViewBag.MatchDate})
+</p>
+
+@*<div>
+    <a asp-action="Index"
+    asp-route-id="@Model.MatchId"
+    asp-route-team1id="@Model.Match.Team1Id"
+    asp-route-team2id="@Model.Match.Team2Id"
+    asp-route-championshipid="@Model.Match.ChampionshipId"
+    asp-route-date="@Model.Match.Date">Back to List</a>
+</div>*@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

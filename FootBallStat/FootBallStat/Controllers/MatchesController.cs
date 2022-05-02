@@ -64,16 +64,36 @@ namespace FootBallStat.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Team1Id,Team2Id,ChampionshipId,Date")] Match match)
         {
-            if (ModelState.IsValid)
+            if (IsUnique(match.Team1Id, match.Team2Id, match.Date) && match.Team1Id != match.Team2Id) 
             {
-                _context.Add(match);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                if (ModelState.IsValid)
+                {
+                    _context.Add(match);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                } 
             }
-            ViewData["ChampionshipId"] = new SelectList(_context.Championships, "Id", "Id", match.ChampionshipId);
-            ViewData["Team1Id"] = new SelectList(_context.Teams, "Id", "Id", match.Team1Id);
-            ViewData["Team2Id"] = new SelectList(_context.Teams, "Id", "Id", match.Team2Id);
+            else if(match.Team1Id != match.Team2Id)
+            {
+                ViewData["ErrorMessage"] = "Одна з команд вже проводить матч в цей день!";
+            }
+            else
+            {
+                ViewData["ErrorMessage"] = "Команда не може грати сама проти себе!";
+            }
+            ViewData["ChampionshipId"] = new SelectList(_context.Championships, "Id", "Name", match.ChampionshipId);
+            ViewData["Team1Id"] = new SelectList(_context.Teams, "Id", "Name", match.Team1Id);
+            ViewData["Team2Id"] = new SelectList(_context.Teams, "Id", "Name", match.Team2Id);
             return View(match);
+        }
+
+        bool IsUnique(int team1Id, int team2Id, DateTime date)
+        {
+            var q = (from match in _context.Matches
+                     where ((match.Team1Id == team1Id || match.Team2Id == team2Id || match.Team1Id == team2Id || match.Team2Id == team1Id) && match.Date.Date == date.Date)
+                     select match).ToList();
+            if (q.Count == 0) { return true; }
+            return false;
         }
 
         // GET: Matches/Edit/5
@@ -84,14 +104,15 @@ namespace FootBallStat.Controllers
                 return NotFound();
             }
 
-            var match = await _context.Matches.FindAsync(id);
+            //var match = await _context.Matches.FindAsync(id);
+            var match =  _context.Matches.Where(m => m.Id == id).Include(m => m.Championship).Include(m => m.Team1).Include(m => m.Team2).FirstOrDefault(); 
             if (match == null)
             {
                 return NotFound();
             } /////
-            ViewData["ChampionshipId"] = new SelectList(_context.Championships, "Id", "Name", match.ChampionshipId); 
-            ViewData["Team1Id"] = new SelectList(_context.Teams, "Id", "Name", match.Team1Id);
-            ViewData["Team2Id"] = new SelectList(_context.Teams, "Id", "Name", match.Team2Id);
+            //ViewData["ChampionshipId"] = new SelectList(_context.Championships, "Id", "Name", match.ChampionshipId);
+            //ViewData["Team1Id"] = new SelectList(_context.Teams, "Id", "Name", match.Team1Id);
+            //ViewData["Team2Id"] = new SelectList(_context.Teams, "Id", "Name", match.Team2Id);
             return View(match);
         }
 
@@ -102,34 +123,52 @@ namespace FootBallStat.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Team1Id,Team2Id,ChampionshipId,Date")] Match match)
         {
+            bool day = false;
+            var m = _context.Matches.Where(m => m.Id == id).Include(m => m.Championship).Include(m => m.Team1).Include(m => m.Team2).FirstOrDefault();
+            
+            if (m.Date.Date == match.Date.Date)
+            { 
+                day = true;
+            }
+
+            m.Date = match.Date;
+            match = m;
+
             if (id != match.Id)
             {
                 return NotFound();
             }
 
-            if (ModelState.IsValid)
+            if (IsUnique(match.Team1Id, match.Team2Id, match.Date) || day)
             {
-                try
+                if (ModelState.IsValid)
                 {
-                    _context.Update(match);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!MatchExists(match.Id))
+                    try
                     {
-                        return NotFound();
+                        _context.Update(match);
+                        await _context.SaveChangesAsync();
                     }
-                    else
+                    catch (DbUpdateConcurrencyException)
                     {
-                        throw;
+                        if (!MatchExists(match.Id))
+                        {
+                            return NotFound();
+                        }
+                        else
+                        {
+                            throw;
+                        }
                     }
+                    return RedirectToAction(nameof(Index));
                 }
-                return RedirectToAction(nameof(Index));
             }
-            ViewData["ChampionshipId"] = new SelectList(_context.Championships, "Id", "Id", match.ChampionshipId);
-            ViewData["Team1Id"] = new SelectList(_context.Teams, "Id", "Id", match.Team1Id);
-            ViewData["Team2Id"] = new SelectList(_context.Teams, "Id", "Id", match.Team2Id);
+            else
+            {
+                ViewData["ErrorMessage"] = "Одна з команд вже проводить матч в цей день!";
+            }
+            //ViewData["ChampionshipId"] = new SelectList(_context.Championships, "Id", "Name", match.ChampionshipId);
+            //ViewData["Team1Id"] = new SelectList(_context.Teams, "Id", "Name", match.Team1Id);
+            //ViewData["Team2Id"] = new SelectList(_context.Teams, "Id", "Name", match.Team2Id);
             return View(match);
         }
 
@@ -160,6 +199,14 @@ namespace FootBallStat.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var match = await _context.Matches.FindAsync(id);
+            var playersInMatches = _context.PlayersInMatches.Where(m => m.MatchId == id);
+            if (playersInMatches.Any())
+            {
+                foreach(var playerInMatch in playersInMatches)
+                {
+                    _context.PlayersInMatches.Remove(playerInMatch);
+                }
+            }
             _context.Matches.Remove(match);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));

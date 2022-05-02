@@ -56,13 +56,29 @@ namespace FootBallStat.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Name")] Team team)
         {
-            if (ModelState.IsValid)
+            if (IsUnique(team.Name)) 
             {
-                _context.Add(team);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                if (ModelState.IsValid)
+                {
+                    _context.Add(team);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+            else
+            {
+                ViewData["ErrorMessage"] = "Така команда вже існує!";
             }
             return View(team);
+        }
+
+        bool IsUnique(string name)
+        {
+            var q = (from team in _context.Teams
+                     where team.Name == name
+                     select team).ToList();
+            if (q.Count == 0) { return true; }
+            return false;
         }
 
         // GET: Teams/Edit/5
@@ -93,25 +109,32 @@ namespace FootBallStat.Controllers
                 return NotFound();
             }
 
-            if (ModelState.IsValid)
+            if (IsUnique(team.Name)) 
+            { 
+                if (ModelState.IsValid)
+                {
+                    try
+                    {
+                        _context.Update(team);
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (DbUpdateConcurrencyException)
+                    {
+                        if (!TeamExists(team.Id))
+                        {
+                            return NotFound();
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+            else
             {
-                try
-                {
-                    _context.Update(team);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!TeamExists(team.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+                ViewData["ErrorMessage"] = "Така команда вже існує!";
             }
             return View(team);
         }
@@ -140,9 +163,24 @@ namespace FootBallStat.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var team = await _context.Teams.FindAsync(id);
-            _context.Teams.Remove(team);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            int count_players = _context.Players.Where(m => m.TeamId == id).Count();
+            int count_matches = _context.Matches.Where(m => m.Team1Id == id || m.Team2Id == id).Count();
+            if (count_players != 0)
+            {
+                ViewData["ErrorMessage"] = "Видалення не можливе, бо в команді є гравці!";
+                return View(team);
+            }
+            else if(count_matches != 0) 
+            {
+                ViewData["ErrorMessage"] = "Видалення не можливе, бо команда бере участь в матчах!";
+                return View(team);
+            }
+            else
+            {
+                _context.Teams.Remove(team);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         private bool TeamExists(int id)

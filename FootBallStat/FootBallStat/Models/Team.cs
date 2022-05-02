@@ -15,6 +15,9 @@ namespace FootBallStat
 
         public int Id { get; set; }
         [Display (Name = "Команда")]
+        [Required(ErrorMessage = "Поле не повинно бути порожнім")]
+        [MinLength(2, ErrorMessage = "Занадто мало символів!")]
+        [MaxLength(20)]
         public string Name { get; set; } = null!;
 
         public virtual ICollection<Match> MatchTeam1s { get; set; }

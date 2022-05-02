@@ -43,8 +43,10 @@
 </div>
 
 <div>
-    <a asp-action="Index">Back to List</a>
-</div>
+         <p class="text-danger">@ViewData["ErrorMessage"]</p>
+</div> 
+
+@Html.ActionLink("Back to List ","Index", new {id = ViewBag.TeamId, name = ViewBag.TeamName})
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

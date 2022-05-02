@@ -47,6 +47,23 @@ namespace FootBallStat.Controllers
             return View();
         }
 
+        // GET: Championships/Matches/5
+        public async Task<IActionResult> Matches(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var matchesByChampionship = _context.Matches.Where(b => b.ChampionshipId == id).Include(m => m.Championship).Include(b => b.Team1).Include(x => x.Team2);
+            var champ = (from Championships in _context.Championships
+                         where Championships.Id == id
+                         select Championships).FirstOrDefault();
+
+            ViewBag.Championship = champ;
+            return View(await matchesByChampionship.ToListAsync());
+        }
+
         // GET: Championships/Create
         public IActionResult Create()
         {
@@ -61,14 +78,30 @@ namespace FootBallStat.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,CountryId,Name")] Championship championship)
         {
-            if (ModelState.IsValid)
+            if (IsUnique(championship.Name, championship.CountryId)) 
             {
-                _context.Add(championship);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                if (ModelState.IsValid)
+                {
+                    _context.Add(championship);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                } 
+            }
+            else
+            {
+                ViewData["ErrorMessage"] = "Чемпіонат з такою назвою в обраній країні вже існує!";
             }
             ViewData["CountryId"] = new SelectList(_context.Countries, "Id", "Name", championship.CountryId);
             return View(championship);
+        }
+
+        bool IsUnique(string name, int countryId)
+        {
+            var q = (from championship in _context.Championships
+                     where championship.Name == name && championship.CountryId == countryId
+                     select championship).ToList();
+            if (q.Count == 0) { return true; }
+            return false;
         }
 
         // GET: Championships/Edit/5
@@ -100,25 +133,32 @@ namespace FootBallStat.Controllers
                 return NotFound();
             }
 
-            if (ModelState.IsValid)
+            if (IsUnique(championship.Name, championship.CountryId))
             {
-                try
+                if (ModelState.IsValid)
                 {
-                    _context.Update(championship);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ChampionshipExists(championship.Id))
+                    try
                     {
-                        return NotFound();
+                        _context.Update(championship);
+                        await _context.SaveChangesAsync();
                     }
-                    else
+                    catch (DbUpdateConcurrencyException)
                     {
-                        throw;
+                        if (!ChampionshipExists(championship.Id))
+                        {
+                            return NotFound();
+                        }
+                        else
+                        {
+                            throw;
+                        }
                     }
+                    return RedirectToAction(nameof(Index));
                 }
-                return RedirectToAction(nameof(Index));
+            }
+            else
+            {
+                ViewData["ErrorMessage"] = "Чемпіонат з такою назвою в обраній країні вже існує!";
             }
             ViewData["CountryId"] = new SelectList(_context.Countries, "Id", "Name", championship.CountryId);
             return View(championship);
@@ -148,10 +188,19 @@ namespace FootBallStat.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var championship = await _context.Championships.FindAsync(id);
-            _context.Championships.Remove(championship);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            var championship =  _context.Championships.Where(m => m.Id == id).Include(m => m.Country).FirstOrDefault();
+            int count_matches = _context.Matches.Where(m => m.ChampionshipId == id).Count();
+            if (count_matches != 0)
+            {
+                ViewData["ErrorMessage"] = "Видалення не можливе, бо в чемпіонаті є матчі!";
+                return View(championship);
+            }
+            else
+            {
+                _context.Championships.Remove(championship);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         private bool ChampionshipExists(int id)

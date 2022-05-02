@@ -11,6 +11,9 @@ namespace FootBallStat
         [Display(Name = "Матч")]
         public int MatchId { get; set; }
         [Display(Name = "Голи гравця в матчі")]
+        [Range(0, 10,
+        ErrorMessage = "{0} повинні бути від {1} до {2}.")]
+        [Required(ErrorMessage = "Поле не повинно бути порожнім")]
         public int PlayerGoals { get; set; }
 
         [Display(Name = "Матч")]
