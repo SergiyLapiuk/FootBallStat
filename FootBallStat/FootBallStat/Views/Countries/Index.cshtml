@@ -6,33 +6,36 @@
 
 <h1>Країни</h1>
 
-<p>
-    <a asp-action="Create">Додати країну</a>
-</p>
+@*<p>
+    <a asp-action="Create"><button class="btn btn-primary"> Додати </button></a>
+</p>*@
 <table class="table">
-    <thead>
+@*    <thead>
         <tr>
             <th>
                 @Html.DisplayNameFor(model => model.Name)
             </th>
             <th></th>
         </tr>
-    </thead>
+    </thead>*@
     <tbody>
 @foreach (var item in Model) {
         <tr>
             <td>
-                @Html.DisplayFor(modelItem => item.Name)
+                <h4>@Html.DisplayFor(modelItem => item.Name)</h4>
             </td>
             <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+                <a asp-action="Edit" asp-route-id="@item.Id"> <button class="btn btn-success"> Змінити </button></a>
+                <a asp-action="Details" asp-route-id="@item.Id"><button class="btn btn-success"> Чемпіонати </button></a> 
+                <a asp-action="Delete" asp-route-id="@item.Id"><button class="btn btn-danger"> Видалити </button></a>
             </td>
         </tr>
 }
     </tbody>
 </table>
+<p>
+    <a asp-action="Create"><button class="btn btn-primary"> Додати </button></a>
+</p>
 
 <div class="container"> 
     <div id="chart1"></div> 
@@ -59,3 +62,23 @@
         } 
     </script> 
 }
+
+<div>
+    <h3>Оберіть excel-файл для завантаження</h3>
+    @using(Html.BeginForm("Import", "Countries", FormMethod.Post, new { enctype = "multipart/form-data", id =
+    "frm-excel"}))
+    {
+        <div>
+            Завантажте Excel-файл:
+            <input  type="file" name="fileExcel" id="fileExcel"/>
+            <div>
+                <input type="submit" value="Завантажити" class="btn btn-primary"/>
+            </div>
+        </div>
+    }
+</div>
+
+<div>
+    <h3>Завантаження інформації у файл</h3>
+    <a asp-action="Export"><button class="btn btn-primary">Завантажити</button></a>
+</div>

@@ -1108,3 +1108,7 @@ C:\Users\acer\Desktop\12\FootBallStat\FootBallStat\obj\Debug\net6.0\refint\FootB
 C:\Users\acer\Desktop\12\FootBallStat\FootBallStat\obj\Debug\net6.0\FootBallStat.pdb
 C:\Users\acer\Desktop\12\FootBallStat\FootBallStat\obj\Debug\net6.0\FootBallStat.genruntimeconfig.cache
 C:\Users\acer\Desktop\12\FootBallStat\FootBallStat\obj\Debug\net6.0\ref\FootBallStat.dll
+C:\Users\acer\Desktop\12\FootBallStat\FootBallStat\bin\Debug\net6.0\ClosedXML.dll
+C:\Users\acer\Desktop\12\FootBallStat\FootBallStat\bin\Debug\net6.0\DocumentFormat.OpenXml.dll
+C:\Users\acer\Desktop\12\FootBallStat\FootBallStat\bin\Debug\net6.0\ExcelNumberFormat.dll
+C:\Users\acer\Desktop\12\FootBallStat\FootBallStat\bin\Debug\net6.0\System.IO.Packaging.dll

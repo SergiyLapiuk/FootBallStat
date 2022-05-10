@@ -59,3 +59,23 @@
         } 
     </script> 
 }
+
+<div>
+    <h3>Оберіть excel-файл для завантаження</h3>
+    @using(Html.BeginForm("Import", "Teams", FormMethod.Post, new { enctype = "multipart/form-data", id =
+    "frm-excel"}))
+    {
+        <div>
+            Завантажте Excel-файл:
+            <input  type="file" name="fileExcel" id="fileExcel"/>
+            <div>
+                <input type="submit" value="Завантажити" class="btn btn-primary"/>
+            </div>
+        </div>
+    }
+</div>
+
+<div>
+    <h3>Завантаження інформації у файл</h3>
+    <a asp-action="Export"><button class="btn btn-primary">Завантажити</button></a>
+</div>

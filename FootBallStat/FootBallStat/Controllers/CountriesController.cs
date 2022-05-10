@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using FootBallStat;
 using System.ComponentModel.DataAnnotations;
+using ClosedXML.Excel;
 
 namespace FootBallStat.Controllers
 {
@@ -60,14 +61,14 @@ namespace FootBallStat.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Name")] Country country)
         {
-            if (IsUnique(country.Name)) 
+            if (IsUnique(country.Name))
             {
                 if (ModelState.IsValid)
                 {
                     _context.Add(country);
                     await _context.SaveChangesAsync();
                     return RedirectToAction(nameof(Index));
-                } 
+                }
             }
             else
             {
@@ -113,7 +114,7 @@ namespace FootBallStat.Controllers
                 return NotFound();
             }
 
-            if (IsUnique(country.Name)) 
+            if (IsUnique(country.Name))
             {
                 if (ModelState.IsValid)
                 {
@@ -185,6 +186,113 @@ namespace FootBallStat.Controllers
         private bool CountryExists(int id)
         {
             return _context.Countries.Any(e => e.Id == id);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Import(IFormFile fileExcel)
+        {
+            if(ModelState.IsValid)
+            {
+                if (fileExcel != null)
+                {
+                    using (var stream = new FileStream(fileExcel.FileName, FileMode.Create))
+                    {
+                        await fileExcel.CopyToAsync(stream);
+                        using (XLWorkbook workBook = new XLWorkbook(stream, XLEventTracking.Disabled))
+                        {
+                            foreach (IXLWorksheet worksheet in workBook.Worksheets)
+                            {
+                                Country newcoun;
+                                var c = (from coun in _context.Countries
+                                         where coun.Name.Contains(worksheet.Name)
+                                         select coun).ToList();
+                                if (c.Count > 0)
+                                {
+                                    newcoun = c[0];
+                                }
+                                else
+                                {
+                                    newcoun = new Country();
+                                    newcoun.Name = worksheet.Name;
+                                    _context.Countries.Add(newcoun);
+                                }
+                                var champfil = new List<Championship>();
+                                foreach (IXLRow row in worksheet.RowsUsed().Skip(1))
+                                {
+                                    try
+                                    {
+                                        Championship championship = new Championship();
+                                        championship.Name = row.Cell(1).Value.ToString();
+                                        championship.Country = newcoun;
+                                        champfil.Add(championship);
+                                        if (IsUniqueChamp(championship.Name, newcoun.Id) && IsUniqueChampFile(champfil, championship.Name, newcoun.Id))
+                                        {
+                                            _context.Championships.Add(championship);
+                                            
+                                        }
+                                    }
+                                    catch (Exception e)
+                                    {
+
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        bool IsUniqueChamp(string name, int countryId)
+        {
+            var q = (from championship in _context.Championships
+                     where championship.Name == name && championship.CountryId == countryId
+                     select championship).ToList();
+            if (q.Count == 0) { return true; }
+            return false;
+        }
+
+        bool IsUniqueChampFile(List<Championship> championships, string name, int countryId)
+        {
+            var q = (from championship in championships
+                     where championship.Name == name && championship.CountryId == countryId
+                     select championship).ToList();
+            if (q.Count == 0) { return true; }
+            return false;
+        }
+
+        public ActionResult Export()
+        {
+            using (XLWorkbook workbook = new XLWorkbook(XLEventTracking.Disabled))
+            {
+                var countries = _context.Countries.Include("Championships").ToList();
+                foreach(var c in countries)
+                {
+                    var worksheet = workbook.Worksheets.Add(c.Name);
+                    worksheet.Cells("A1").Value = "Назва чемпіонату";
+                    worksheet.Column("A").Width = 25;
+                    worksheet.Row(1).Style.Font.Bold = true;
+                    var championships = c.Championships.ToList();
+
+                    for(int i = 0; i < championships.Count; i++)
+                    {
+                        worksheet.Cell(i + 2, 1).Value = championships[i].Name;
+                    }
+                }
+                using(var stream = new MemoryStream())
+                {
+                    workbook.SaveAs(stream);
+                    stream.Flush();
+
+                    return new FileContentResult(stream.ToArray(),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    {
+                        FileDownloadName = $"footbollstat_{DateTime.UtcNow.ToLongDateString()}.xlsx"
+                    };
+                }
+            }
         }
     }
 }
