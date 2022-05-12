@@ -21,8 +21,9 @@ namespace FootBallStat.Controllers
         }
 
         // GET: Countries
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? f)
         {
+            ViewBag.f = f;
             return View(await _context.Countries.ToListAsync());
         }
 
@@ -196,54 +197,75 @@ namespace FootBallStat.Controllers
             {
                 if (fileExcel != null)
                 {
-                    using (var stream = new FileStream(fileExcel.FileName, FileMode.Create))
-                    {
-                        await fileExcel.CopyToAsync(stream);
-                        using (XLWorkbook workBook = new XLWorkbook(stream, XLEventTracking.Disabled))
+                    var stream = new FileStream(fileExcel.FileName, FileMode.Create);
+                    await fileExcel.CopyToAsync(stream);
+                    try {
+                        XLWorkbook workBook = new XLWorkbook(stream, XLEventTracking.Disabled);
+                        foreach (IXLWorksheet worksheet in workBook.Worksheets)
                         {
-                            foreach (IXLWorksheet worksheet in workBook.Worksheets)
+                            Country newcoun;
+                            var c = (from coun in _context.Countries
+                                     where coun.Name.Contains(worksheet.Name)
+                                     select coun).ToList();
+                            if (c.Count > 0)
                             {
-                                Country newcoun;
-                                var c = (from coun in _context.Countries
-                                         where coun.Name.Contains(worksheet.Name)
-                                         select coun).ToList();
-                                if (c.Count > 0)
-                                {
-                                    newcoun = c[0];
-                                }
-                                else
-                                {
-                                    newcoun = new Country();
-                                    newcoun.Name = worksheet.Name;
-                                    _context.Countries.Add(newcoun);
-                                }
-                                var champfil = new List<Championship>();
-                                foreach (IXLRow row in worksheet.RowsUsed().Skip(1))
-                                {
-                                    try
-                                    {
-                                        Championship championship = new Championship();
-                                        championship.Name = row.Cell(1).Value.ToString();
-                                        championship.Country = newcoun;
-                                        champfil.Add(championship);
-                                        if (IsUniqueChamp(championship.Name, newcoun.Id) && IsUniqueChampFile(champfil, championship.Name, newcoun.Id))
-                                        {
-                                            _context.Championships.Add(championship);
-                                            
-                                        }
-                                    }
-                                    catch (Exception e)
-                                    {
-
-                                    }
-                                }
+                                newcoun = c[0];
+                            }
+                            else
+                            {
+                                newcoun = new Country();
+                                newcoun.Name = worksheet.Name;
+                                _context.Countries.Add(newcoun);
+                            }
+                            var ex = AllRows(worksheet, newcoun);
+                            if(ex != null)
+                            {
+                                workBook.Dispose();
+                                stream.Dispose();
+                                return RedirectToAction("Index", "Countries", new { f = "Некоректні дані" });
                             }
                         }
+                        workBook.Dispose();
+                        stream.Dispose();
                     }
+                    catch
+                    {
+                        return RedirectToAction("Index", "Countries", new { f = "Некоректні дані" });
+                    }           
+                }
+                else
+                {
+                    return RedirectToAction("Index", "Countries", new { f = "Не прикріплений файл" });
                 }
                 await _context.SaveChangesAsync();
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        public string? AllRows(IXLWorksheet worksheet, Country newcoun)
+        {
+                var champfil = new List<Championship>();
+                foreach (IXLRow row in worksheet.RowsUsed().Skip(1))
+                {
+                    try
+                    {
+                        Championship championship = new Championship();
+                        championship.Name = row.Cell(1).Value.ToString();
+                        championship.Country = newcoun;
+                        //champfil.Add(championship);
+                        if (IsUniqueChamp(championship.Name, newcoun.Id) && IsUniqueChampFile(champfil, championship.Name, newcoun.Id))
+                        {
+                            _context.Championships.Add(championship);
+                            champfil.Add(championship);
+                        }
+
+                    }
+                    catch (Exception e)
+                    {
+                        return "Не коректні дані.";
+                    }
+                }
+            return null;
         }
 
         bool IsUniqueChamp(string name, int countryId)
@@ -266,22 +288,9 @@ namespace FootBallStat.Controllers
 
         public ActionResult Export()
         {
-            using (XLWorkbook workbook = new XLWorkbook(XLEventTracking.Disabled))
+            using (XLWorkbook workbook = Exporting())
             {
-                var countries = _context.Countries.Include("Championships").ToList();
-                foreach(var c in countries)
-                {
-                    var worksheet = workbook.Worksheets.Add(c.Name);
-                    worksheet.Cells("A1").Value = "Назва чемпіонату";
-                    worksheet.Column("A").Width = 25;
-                    worksheet.Row(1).Style.Font.Bold = true;
-                    var championships = c.Championships.ToList();
-
-                    for(int i = 0; i < championships.Count; i++)
-                    {
-                        worksheet.Cell(i + 2, 1).Value = championships[i].Name;
-                    }
-                }
+                
                 using(var stream = new MemoryStream())
                 {
                     workbook.SaveAs(stream);
@@ -294,5 +303,29 @@ namespace FootBallStat.Controllers
                 }
             }
         }
+
+        public XLWorkbook Exporting()
+        {
+            XLWorkbook workbook = new XLWorkbook(XLEventTracking.Disabled);
+            var countries = _context.Countries.Include("Championships").ToList();
+            foreach (var c in countries)
+            {
+                var worksheet = workbook.Worksheets.Add(c.Name);
+                worksheet.Cells("A1").Value = "Назва чемпіонату";
+                worksheet.Column("A").Width = 25;
+                worksheet.Row(1).Style.Font.Bold = true;
+                var championships = c.Championships.ToList();
+
+                for (int i = 0; i < championships.Count; i++)
+                {
+                    worksheet.Cell(i + 2, 1).Value = championships[i].Name;
+                }
+            }
+            return workbook;
+        }
     }
 }
+
+
+
+

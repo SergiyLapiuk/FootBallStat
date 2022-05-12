@@ -20,8 +20,9 @@ namespace FootBallStat.Controllers
         }
 
         // GET: Teams
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? f)
         {
+            ViewBag.f = f;
             return View(await _context.Teams.ToListAsync());
         }
 
@@ -197,77 +198,107 @@ namespace FootBallStat.Controllers
             {
                 if (fileExcel != null)
                 {
-                    using (var stream = new FileStream(fileExcel.FileName, FileMode.Create))
+                    var stream = new FileStream(fileExcel.FileName, FileMode.Create);
+                    await fileExcel.CopyToAsync(stream);
+                    try
                     {
-                        await fileExcel.CopyToAsync(stream);
-                        using (XLWorkbook workBook = new XLWorkbook(stream, XLEventTracking.Disabled))
+                        XLWorkbook workBook = new XLWorkbook(stream, XLEventTracking.Disabled);
+                        foreach (IXLWorksheet worksheet in workBook.Worksheets)
                         {
-                            foreach (IXLWorksheet worksheet in workBook.Worksheets)
+                            Team newteam;
+                            var c = (from team in _context.Teams
+                                where team.Name.Contains(worksheet.Name)
+                                select team).ToList();
+                            if (c.Count > 0)
                             {
-                                Team newteam;
-                                var c = (from team in _context.Teams
-                                         where team.Name.Contains(worksheet.Name)
-                                         select team).ToList();
-                                if (c.Count > 0)
-                                {
-                                    newteam = c[0];
-                                }
-                                else
-                                {
-                                    newteam = new Team();
-                                    newteam.Name = worksheet.Name;
-                                    _context.Teams.Add(newteam);
-                                }
-                                var plfile = new List<Player>();
-                                foreach (IXLRow row in worksheet.RowsUsed().Skip(1))
-                                {
-                                    try
-                                    {
-                                        if(row.Cell(4).Value.ToString().Length > 0)
-                                        {
-                                            Position position;
-                                            var p = (from pos in _context.Positions
-                                                     where pos.Name.Contains(row.Cell(4).Value.ToString())
-                                                     select pos).ToList();
-                                            if(p.Count > 0)
-                                            {
-                                                position = p[0];
-                                            }
-                                            else
-                                            {
-                                                position = new Position();
-                                                position.Name = row.Cell(4).Value.ToString();
-                                                _context.Positions.Add(position);
-                                            }
-                                            Player player = new Player();
-                                            player.Name = row.Cell(1).Value.ToString();
-                                            var dateString = row.Cell(2).Value.ToString();
-                                            DateTime date = DateTime.Parse(dateString);
-                                            player.DateOfBirth = date;
-                                            player.Number = Convert.ToInt32(row.Cell(3).Value.ToString());
-                                            player.Team = newteam;
-                                            player.Position = position;
-                                            plfile.Add(player);
-                                            if (IsUniquePlayer(player.Name, player.Number, newteam.Id, player.DateOfBirth) && (player.Number <= 99 && player.Number >= 1)
-                                                && IsValidDate(player.DateOfBirth))
-                                            { 
-                                                _context.Players.Add(player);
-                                                await _context.SaveChangesAsync();
-                                            }
-                                        }
-                                    }
-                                    catch (Exception e)
-                                    {
-
-                                    }
-                                }
+                                newteam = c[0];
+                            }
+                            else
+                            {
+                                newteam = new Team();
+                                newteam.Name = worksheet.Name;
+                                _context.Teams.Add(newteam);
+                            }
+                            var ex = AllRows(worksheet, newteam);
+                            await _context.SaveChangesAsync();
+                            if (ex != null)
+                            {
+                                workBook.Dispose();
+                                stream.Dispose();
+                                return RedirectToAction("Index", "Teams", new { f = ex });
                             }
                         }
+                        workBook.Dispose();
+                        stream.Dispose();
                     }
+                    catch
+                    {
+                        return RedirectToAction("Index", "Teams", new { f = "Некоректні дані" });
+                    }
+                }
+                else
+                {
+                    return RedirectToAction("Index", "Teams", new { f = "Не прикріплений файл" });
                 }
                 await _context.SaveChangesAsync();
             }
             return RedirectToAction(nameof(Index));
+        }
+
+        public string? AllRows(IXLWorksheet worksheet, Team newteam)
+        {
+            var playersfile = new List<Player>();
+            string error = "";
+            foreach (IXLRow row in worksheet.RowsUsed().Skip(1))
+            {
+                try
+                {
+                    if (row.Cell(4).Value.ToString().Length > 0)
+                    {
+                        Position position;
+                        var p = (from pos in _context.Positions
+                                 where pos.Name.Contains(row.Cell(4).Value.ToString())
+                                 select pos).ToList();
+                        if (p.Count > 0)
+                        {
+                            position = p[0];
+                        }
+                        else
+                        {
+                            position = new Position();
+                            position.Name = row.Cell(4).Value.ToString();
+                            _context.Positions.Add(position);
+                        }
+                        Player player = new Player();
+                        player.Name = row.Cell(1).Value.ToString();
+                        var dateString = row.Cell(2).Value.ToString();
+                        DateTime date = DateTime.Parse(dateString);
+                        player.DateOfBirth = date;
+                        player.Number = Convert.ToInt32(row.Cell(3).Value.ToString());
+                        player.Team = newteam;
+                        player.Position = position;
+ 
+                        if (IsUniquePlayer(player.Name, player.Number, newteam.Id, player.DateOfBirth) && (player.Number <= 99 && player.Number >= 1)
+                            && IsValidDate(player.DateOfBirth) && IsUniquePlayerFile(playersfile, player.Name, player.Number, newteam.Id, player.DateOfBirth))
+                        {
+                            _context.Players.Add(player);
+                            playersfile.Add(player);
+                            //_context.SaveChangesAsync();
+                        }
+                        if (IsValidDate(player.DateOfBirth) == false)
+                            error += player.Name + "; ";
+                    }
+                }
+                catch (Exception e)
+                {
+                    return "Не коректні дані.";
+                }
+            }
+            if(error != "")
+            {
+                return "Ці гравці не підходять за віком: " + error;
+            }
+            return null;
         }
 
         bool IsUniquePlayer(string name, int number, int teamId, DateTime dateOfBirth)
@@ -284,67 +315,31 @@ namespace FootBallStat.Controllers
             return false;
         }
 
-        //bool IsUniquePlayerFile(List<Player> players, string name, int number, int teamId, DateTime dateOfBirth)
-        //{
-        //    var q = (from player in players
-        //             where player.Name == name && player.DateOfBirth.Date == dateOfBirth.Date
-        //             select player).ToList();
+        bool IsUniquePlayerFile(List<Player> players, string name, int number, int teamId, DateTime dateOfBirth)
+        {
+            var q = (from player in players
+                     where player.Name == name && player.DateOfBirth.Date == dateOfBirth.Date
+                     select player).ToList();
 
-        //    var g = (from player in players
-        //             where player.Number == number
-        //             select player).ToList();
-        //    if (q.Count == 0 && g.Count == 0) return true;
-        //    return false;
-        //}
+            var g = (from player in players
+                     where player.Number == number && player.TeamId == teamId
+
+                     select player).ToList();
+            if (q.Count == 0 && g.Count == 0) return true;
+            return false;
+        }
 
         bool IsValidDate(DateTime dateTime)
         {
-            var dateString = "1/1/1977 0:00:00 AM";
-            DateTime date1 = DateTime.Parse(dateString,
-                                      System.Globalization.CultureInfo.InvariantCulture);
-            var dateString2 = "1/1/2005 0:00:00 AM";
-            DateTime date2 = DateTime.Parse(dateString2,
-                                      System.Globalization.CultureInfo.InvariantCulture);
-            return date1 <= dateTime && dateTime <= date2;
+            DateTime dateNow = DateTime.UtcNow;
+            var diff = dateNow.Year - dateTime.Year;
+            return 17 <= diff && diff <= 45;
         }
 
         public ActionResult Export()
         {
-            using (XLWorkbook workbook = new XLWorkbook(XLEventTracking.Disabled))
+            using (XLWorkbook workbook = Exporting())
             {
-                var teams = _context.Teams.Include("Players").ToList();
-                foreach (var c in teams)
-                {
-                    var worksheet = workbook.Worksheets.Add(c.Name);
-                    worksheet.Cells("A1").Value = "Ім'я";
-                    worksheet.Column("A").Width = 25;
-                    worksheet.Row(1).Style.Font.Bold = true;
-
-                    worksheet.Cells("B1").Value = "Дата народження";
-                    worksheet.Column("B").Width = 25;
-                    worksheet.Row(1).Style.Font.Bold = true;
-
-                    worksheet.Cells("C1").Value = "Ігровий номер";
-                    worksheet.Column("C").Width = 25;
-                    worksheet.Row(1).Style.Font.Bold = true;
-
-                    worksheet.Cells("D1").Value = "Позиція";
-                    worksheet.Column("D").Width = 25;
-                    worksheet.Row(1).Style.Font.Bold = true;
-
-                    var players = c.Players.ToList();
-
-                    for (int i = 0; i < players.Count; i++)
-                    {
-                        worksheet.Cell(i + 2, 1).Value = players[i].Name;
-                        worksheet.Cell(i + 2, 2).Value = players[i].DateOfBirth;
-                        worksheet.Cell(i + 2, 3).Value = players[i].Number;
-
-                        var p = _context.Positions.Where(a => a.Id == players[i].PositionId).FirstOrDefault();
-
-                        worksheet.Cell(i + 2, 4).Value = p.Name;
-                    }
-                }
                 using (var stream = new MemoryStream())
                 {
                     workbook.SaveAs(stream);
@@ -356,6 +351,45 @@ namespace FootBallStat.Controllers
                     };
                 }
             }
+        }
+
+        public XLWorkbook Exporting()
+        {
+            XLWorkbook workbook = new XLWorkbook(XLEventTracking.Disabled);
+            var teams = _context.Teams.Include("Players").ToList();
+            foreach (var c in teams)
+            {
+                var worksheet = workbook.Worksheets.Add(c.Name);
+                worksheet.Cells("A1").Value = "Ім'я";
+                worksheet.Column("A").Width = 25;
+                worksheet.Row(1).Style.Font.Bold = true;
+
+                worksheet.Cells("B1").Value = "Дата народження";
+                worksheet.Column("B").Width = 25;
+                worksheet.Row(1).Style.Font.Bold = true;
+
+                worksheet.Cells("C1").Value = "Ігровий номер";
+                worksheet.Column("C").Width = 25;
+                worksheet.Row(1).Style.Font.Bold = true;
+
+                worksheet.Cells("D1").Value = "Позиція";
+                worksheet.Column("D").Width = 25;
+                worksheet.Row(1).Style.Font.Bold = true;
+
+                var players = c.Players.ToList();
+
+                for (int i = 0; i < players.Count; i++)
+                {
+                    worksheet.Cell(i + 2, 1).Value = players[i].Name;
+                    worksheet.Cell(i + 2, 2).Value = players[i].DateOfBirth;
+                    worksheet.Cell(i + 2, 3).Value = players[i].Number;
+
+                    var p = _context.Positions.Where(a => a.Id == players[i].PositionId).FirstOrDefault();
+
+                    worksheet.Cell(i + 2, 4).Value = p.Name;
+                }
+            }
+            return workbook;
         }
     }
 }

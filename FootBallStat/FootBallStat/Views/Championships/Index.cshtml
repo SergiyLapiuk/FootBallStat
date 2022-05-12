@@ -5,10 +5,12 @@
 }
 
 <h1>Чемпіонати</h1>
-
-<p>
-    <a asp-action="Create">Додати чемпіонат</a>
-</p>
+@if (User.IsInRole("admin"))
+{
+    <p>
+        <a asp-action="Create"><button class="btn btn-primary"> Додати чемпіонат </button></a>
+    </p>
+}
 <table class="table">
     <thead>
         <tr>
@@ -30,12 +32,22 @@
             <td>
                 @Html.DisplayFor(modelItem => item.Country.Name)
             </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a> |
-                <a asp-action="Matches" asp-route-id="@item.Id">Matches</a>
-            </td>
+                @if (User.IsInRole("admin"))
+                {
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@item.Id"><button class="btn btn-success"> Змінити </button></a> 
+                        <a asp-action="Details" asp-route-id="@item.Id"><button class="btn btn-success"> Команди </button></a> 
+                        <a asp-action="Matches" asp-route-id="@item.Id"><button class="btn btn-success"> Матчі </button></a>
+                        <a asp-action="Delete" asp-route-id="@item.Id"><button class="btn btn-danger"> Видалити </button></a> 
+                    </td>
+                }
+                else
+                {
+                    <td>
+                        <a asp-action="Details" asp-route-id="@item.Id"><button class="btn btn-success"> Команди </button></a> 
+                        <a asp-action="Matches" asp-route-id="@item.Id"><button class="btn btn-success"> Матчі </button></a>
+                    </td>
+                }
         </tr>
 }
     </tbody>

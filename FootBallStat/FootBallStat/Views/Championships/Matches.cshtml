@@ -10,9 +10,9 @@
 <table class="table">
     <thead>
         <tr>
-            <th>
+@*            <th>
                 @Html.DisplayNameFor(model => model.Id)
-            </th>
+            </th>*@
             <th>
                 @Html.DisplayNameFor(model => model.Date)
             </th>
@@ -31,9 +31,9 @@
     <tbody>
 @foreach (var item in Model) {
         <tr>
-            <td>
+@*            <td>
                 @Html.DisplayFor(modelItem => item.Id)
-            </td>
+            </td>*@
             <td>
                 @Html.DisplayFor(modelItem => item.Date)
             </td>
@@ -46,11 +46,18 @@
             <td>
                 @Html.DisplayFor(modelItem => item.Team2.Name)
             </td>
+            @if (User.IsInRole("admin"))
+            {
             <td>
-                <a asp-controller="Matches" asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-controller="Matches" asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-controller="Matches" asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+                <a asp-controller="Matches" asp-action="Edit" asp-route-id="@item.Id"><button class="btn btn-success"> Змінити </button></a> 
+                <a asp-controller="Matches" asp-action="Details" asp-route-id="@item.Id"><button class="btn btn-success"> Гравці </button></a> 
+                <a asp-controller="Matches" asp-action="Delete" asp-route-id="@item.Id"><button class="btn btn-danger"> Видалити </button></a>
             </td>
+            }
+            else 
+            {
+                <td><a asp-controller="Matches" asp-action="Details" asp-route-id="@item.Id">Details</a></td>
+            }
         </tr>
 }
     </tbody>

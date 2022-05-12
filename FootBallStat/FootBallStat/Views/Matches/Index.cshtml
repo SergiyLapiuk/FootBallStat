@@ -5,16 +5,17 @@
 }
 
 <h1>Матчі</h1>
-
-<p>
-    <a asp-action="Create">Додати матч</a>
-</p>
+@if (User.IsInRole("admin"))
+{
+    <p>
+    <a asp-action="Create"><button class="btn btn-primary"> Додати матч</button></a>
+</p>}
 <table class="table">
     <thead>
         <tr>
-            <th>
+@*            <th>
                 @Html.DisplayNameFor(model => model.Id)
-            </th>
+            </th>*@
             <th>
                 @Html.DisplayNameFor(model => model.Date)
             </th>
@@ -33,9 +34,9 @@
     <tbody>
 @foreach (var item in Model) {
         <tr>
-            <td>
+@*            <td>
                 @Html.DisplayFor(modelItem => item.Id)
-            </td>
+            </td>*@
             <td>
                 @Html.DisplayFor(modelItem => item.Date)
             </td>
@@ -48,11 +49,20 @@
             <td>
                 @Html.DisplayFor(modelItem => item.Team2.Name)
             </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
+                @if (User.IsInRole("admin"))
+                {
+                    <td>
+                        <a asp-action="Edit" asp-route-id="@item.Id"><button class="btn btn-success"> Змінити </button></a> 
+                        <a asp-action="Details" asp-route-id="@item.Id"><button class="btn btn-success"> Гравці </button></a> 
+                        <a asp-action="Delete" asp-route-id="@item.Id"><button class="btn btn-danger"> Видалити </button></a>
+                    </td>
+                }
+                else
+                {
+                    <td>
+                        <a asp-action="Details" asp-route-id="@item.Id"><button class="btn btn-success"> Гравці </button></a> 
+                    </td>
+                }
         </tr>
 }
     </tbody>
