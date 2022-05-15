@@ -194,6 +194,7 @@ namespace FootBallStat.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Import(IFormFile fileExcel)
         {
+            string errordate = null;
             if (ModelState.IsValid)
             {
                 if (fileExcel != null)
@@ -223,9 +224,10 @@ namespace FootBallStat.Controllers
                             await _context.SaveChangesAsync();
                             if (ex != null)
                             {
-                                workBook.Dispose();
-                                stream.Dispose();
-                                return RedirectToAction("Index", "Teams", new { f = ex });
+                                //workBook.Dispose();
+                                //stream.Dispose();
+                                //return RedirectToAction("Index", "Teams", new { f = ex });
+                                errordate += ex;
                             }
                         }
                         workBook.Dispose();
@@ -242,13 +244,18 @@ namespace FootBallStat.Controllers
                 }
                 await _context.SaveChangesAsync();
             }
+            if(errordate != null)
+            {
+
+                return RedirectToAction("Index", "Teams", new { f = "Ці гравці не підходять за віком: " + errordate});
+            }
             return RedirectToAction(nameof(Index));
         }
 
         public string? AllRows(IXLWorksheet worksheet, Team newteam)
         {
             var playersfile = new List<Player>();
-            string error = "";
+            string error = null;
             foreach (IXLRow row in worksheet.RowsUsed().Skip(1))
             {
                 try
@@ -296,7 +303,7 @@ namespace FootBallStat.Controllers
             }
             if(error != "")
             {
-                return "Ці гравці не підходять за віком: " + error;
+                return error;
             }
             return null;
         }

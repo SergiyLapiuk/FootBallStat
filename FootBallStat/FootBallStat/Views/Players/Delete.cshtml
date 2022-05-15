@@ -45,7 +45,7 @@
     
     <form asp-action="Delete">
         <input type="hidden" asp-for="Id" />
-        <input type="submit" value="Видалити" class="btn btn-danger" /> |
-@Html.ActionLink("Back to List ","Index", new {id = Model.TeamId})
+        <input type="submit" value="Видалити" class="btn btn-danger" /> 
+@Html.ActionLink("Повернутись до списку","Index", new {id = Model.TeamId}, new { @class = "btn btn-success" })
     </form>
 </div>

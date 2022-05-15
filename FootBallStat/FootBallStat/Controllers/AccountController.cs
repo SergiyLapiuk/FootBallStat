@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using FootBallStat.ViewModel;
 using FootBallStat.Models;
 
+
+
 namespace FootBallStat.Controllers
 {
     public class AccountController : Controller
@@ -10,6 +12,7 @@ namespace FootBallStat.Controllers
 
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
+
 
         public AccountController(UserManager<User> userManager, SignInManager<User> signInManager)
         {

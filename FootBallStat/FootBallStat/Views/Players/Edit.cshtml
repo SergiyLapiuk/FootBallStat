@@ -47,7 +47,7 @@
      <div>
          <p class="text-danger">@ViewData["ErrorMessage"]</p>
      </div>
-@Html.ActionLink("Back to List ","Index", new {id = Model.TeamId})
+@Html.ActionLink("Повернутись до списку ","Index", new {id = Model.TeamId}, new { @class = "btn btn-success" })
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

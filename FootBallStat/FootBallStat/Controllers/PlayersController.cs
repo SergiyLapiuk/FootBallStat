@@ -83,6 +83,7 @@ namespace FootBallStat.Controllers
                 ViewData["ErrorMessage"] = "Цей гравець вже доданий!";
                 ViewData["PositionId"] = new SelectList(_context.Positions, "Id", "Name");
                 ViewBag.TeamId = teamId;
+                ViewBag.TeamName = _context.Teams.Where(c => c.Id == teamId).FirstOrDefault().Name;
                 return View(player);
             }
             else if (IsUnique(player.Name, player.Number, player.TeamId, player.DateOfBirth) == 3)
@@ -90,11 +91,13 @@ namespace FootBallStat.Controllers
                 ViewData["ErrorMessage"] = "Номер в цій команді вже зайнятий!";
                 ViewData["PositionId"] = new SelectList(_context.Positions, "Id", "Name");
                 ViewBag.TeamId = teamId;
+                ViewBag.TeamName = _context.Teams.Where(c => c.Id == teamId).FirstOrDefault().Name;
                 return View(player);
             }
             //return RedirectToAction("Index", "Players", new { id = teamId, name = _context.Teams.Where(c => c.Id == teamId).FirstOrDefault().Name });
             ViewData["PositionId"] = new SelectList(_context.Positions, "Id", "Name");
             ViewBag.TeamId = teamId;
+            ViewBag.TeamName = _context.Teams.Where(c => c.Id == teamId).FirstOrDefault().Name;
             return View(player);
         }
 
@@ -139,6 +142,7 @@ namespace FootBallStat.Controllers
         {
             var p =  _context.Players.Where(m => m.Id == id).Include(m => m.Position).Include(m => m.Team).Include(m => m.PlayersInMatches).FirstOrDefault();
             bool number = p.Number == player.Number;
+            bool team = p.TeamId == player.TeamId;
             p.TeamId = player.TeamId;
             p.PositionId = player.PositionId;
             p.Name = player.Name;
@@ -150,7 +154,7 @@ namespace FootBallStat.Controllers
                 return NotFound();
             }
 
-            if (IsUniqueEdit(player.Number, player.TeamId) || number) 
+            if (IsUniqueEdit(player.Number, player.TeamId) || (number && team)) 
             { 
                 if (ModelState.IsValid)
                 {

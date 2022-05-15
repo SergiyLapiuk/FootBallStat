@@ -2,6 +2,7 @@
 
 namespace FootBallStat.ViewModel
 {
+
     public class RegisterViewModel
     {
         [Required]
@@ -9,8 +10,11 @@ namespace FootBallStat.ViewModel
         [DataType(DataType.EmailAddress)]
         public string Email { get; set; }
 
-        [Required]
+        
         [Display(Name ="Рік народження")]
+        [Range(1920, 2017,
+        ErrorMessage = "{0} повинен від {1} до {2}.")]
+        [Required(ErrorMessage = "Поле не повинно бути порожнім")]
         public int Year { get; set; }
 
         [Required]
